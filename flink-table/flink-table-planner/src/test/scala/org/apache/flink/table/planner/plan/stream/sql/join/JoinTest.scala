@@ -506,69 +506,47 @@ class JoinTest extends TableTestBase {
   }
 
   @Test
-  def testInnerJoinWithFilterPushDown(): Unit = {
-    util.verifyExecPlan("""
-                          |SELECT * FROM
-                          |   (select a1, count(a2) as a2 from A group by a1)
-                          |   join
-                          |   (select b1, count(b2) as b2 from B group by b1)
-                          |   on true where a1 = b1 and a2 = b2 and b1 = 2
-                          |""".stripMargin)
-  }
+  def testJoinCanAccessSourcePkWithMiniBatchAssigner(): Unit = {
+    // test for FLINK-27851
+    util.tableEnv.executeSql("""
+                               |create table left_table (
+                               | a varchar primary key,
+                               | b int
+                               |) with (
+                               | 'connector' = 'values'
+                               |)
+                               |""".stripMargin)
 
-  @Test
-  def testInnerJoinWithJoinConditionPushDown(): Unit = {
-    util.verifyExecPlan("""
-                          |SELECT * FROM
-                          |  (select a1, count(a2) as a2 from A group by a1)
-                          |   join
-                          |  (select b1, count(b2) as b2 from B group by b1)
-                          |   on true where a1 = b1 and a2 = b2 and b1 = 2 and a2 = 1
-                          |""".stripMargin)
-  }
+    util.tableEnv.executeSql("""
+                               |create table right_table (
+                               | c varchar primary key,
+                               | d int
+                               |) with (
+                               | 'connector' = 'values'
+                               |)
+                               |""".stripMargin)
 
-  @Test
-  def testLeftJoinWithFilterPushDown(): Unit = {
-    util.verifyExecPlan("""
-                          |SELECT * FROM
-                          |  (select a1, count(a2) as a2 from A group by a1)
-                          |   left join
-                          |  (select b1, count(b2) as b2 from B group by b1)
-                          |   on true where a1 = b1 and b2 = a2 and a1 = 2
-                          |""".stripMargin)
-  }
+    util.tableEnv.executeSql("""
+                               |create table sink (
+                               | e varchar primary key,
+                               | f int,
+                               | g int
+                               |) with (
+                               | 'connector' = 'values'
+                               |)
+                               |""".stripMargin)
 
-  @Test
-  def testLeftJoinWithJoinConditionPushDown(): Unit = {
-    util.verifyExecPlan("""
-                          |SELECT * FROM
-                          |  (select a1, count(a2) as a2 from A group by a1)
-                          |   left join
-                          |  (select b1, count(b2) as b2 from B group by b1)
-                          |   on a1 = b1 and a2 = b2 and a1 = 2 and b2 = 1
-                          |""".stripMargin)
-  }
+    util.tableEnv.getConfig.getConfiguration
+      .setBoolean("table.exec.mini-batch.enabled", java.lang.Boolean.valueOf(true))
+    util.tableEnv.getConfig.getConfiguration.setString("table.exec.mini-batch.allow-latency", "10s")
 
-  @Test
-  def testRightJoinWithFilterPushDown(): Unit = {
-    util.verifyExecPlan("""
-                          |SELECT * FROM
-                          |  (select a1, count(a2) as a2 from A group by a1)
-                          |   right join
-                          |  (select b1, count(b2) as b2 from B group by b1)
-                          |   on true where a1 = b1 and a2 = b2 and b1 = 2
-                          |""".stripMargin)
+    util.verifyExplainInsert(
+      """
+        |insert into sink
+        |select left_table.a, left_table.b, right_table.d
+        | from left_table
+        | join right_table on left_table.a = right_table.c
+        |""".stripMargin
+    )
   }
-
-  @Test
-  def testRightJoinWithJoinConditionPushDown(): Unit = {
-    util.verifyExecPlan("""
-                          |SELECT * FROM
-                          | (select a1, count(a2) as a2 from A group by a1)
-                          |   right join
-                          | (select b1, count(b2) as b2 from B group by b1)
-                          |   on a1 = b1 and a2 = b2 and b1 = 2 and a2 = 1
-                          |""".stripMargin)
-  }
-
 }
