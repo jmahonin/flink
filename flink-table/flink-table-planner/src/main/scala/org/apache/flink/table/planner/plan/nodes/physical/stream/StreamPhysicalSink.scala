@@ -27,6 +27,7 @@ import org.apache.flink.table.planner.plan.nodes.exec.{ExecNode, InputProperty}
 import org.apache.flink.table.planner.plan.nodes.exec.spec.DynamicTableSinkSpec
 import org.apache.flink.table.planner.plan.nodes.exec.stream.StreamExecSink
 import org.apache.flink.table.planner.plan.utils.{ChangelogPlanUtils, UpsertKeyUtil}
+import org.apache.flink.table.planner.plan.utils.{ChangelogPlanUtils, UpsertKeyUtil}
 import org.apache.flink.table.planner.utils.ShortcutUtils.unwrapTableConfig
 
 import org.apache.calcite.plan.{RelOptCluster, RelTraitSet}
