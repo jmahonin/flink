@@ -64,6 +64,7 @@ import static org.apache.flink.formats.avro.registry.confluent.AvroConfluentForm
 import static org.apache.flink.formats.avro.registry.confluent.AvroConfluentFormatOptions.BASIC_AUTH_USER_INFO;
 import static org.apache.flink.formats.avro.registry.confluent.AvroConfluentFormatOptions.BEARER_AUTH_CREDENTIALS_SOURCE;
 import static org.apache.flink.formats.avro.registry.confluent.AvroConfluentFormatOptions.BEARER_AUTH_TOKEN;
+import static org.apache.flink.formats.avro.registry.confluent.AvroConfluentFormatOptions.LONG_SCHEMA_ID;
 import static org.apache.flink.formats.avro.registry.confluent.AvroConfluentFormatOptions.PROPERTIES;
 import static org.apache.flink.formats.avro.registry.confluent.AvroConfluentFormatOptions.SCHEMA;
 import static org.apache.flink.formats.avro.registry.confluent.AvroConfluentFormatOptions.SSL_KEYSTORE_LOCATION;
@@ -177,6 +178,7 @@ public class RegistryAvroFormatFactory
         Set<ConfigOption<?>> options = new HashSet<>();
         options.add(SUBJECT);
         options.add(SCHEMA);
+        options.add(LONG_SCHEMA_ID);
         options.add(PROPERTIES);
         options.add(SSL_KEYSTORE_LOCATION);
         options.add(SSL_KEYSTORE_PASSWORD);
@@ -195,6 +197,7 @@ public class RegistryAvroFormatFactory
                         URL,
                         SUBJECT,
                         SCHEMA,
+                        LONG_SCHEMA_ID,
                         PROPERTIES,
                         SSL_KEYSTORE_LOCATION,
                         SSL_KEYSTORE_PASSWORD,
@@ -212,6 +215,12 @@ public class RegistryAvroFormatFactory
         final Map<String, String> properties = new HashMap<>();
 
         formatOptions.getOptional(PROPERTIES).ifPresent(properties::putAll);
+
+        // Forward the 'long-schema-id' property, if present. Note that this is not an actual
+        // Confluent property, so it is handled and removed in CachedSchemaCoderProvider
+        formatOptions
+                .getOptional(LONG_SCHEMA_ID)
+                .ifPresent(v -> properties.put(LONG_SCHEMA_ID.key(), v.toString()));
 
         formatOptions
                 .getOptional(SSL_KEYSTORE_LOCATION)
