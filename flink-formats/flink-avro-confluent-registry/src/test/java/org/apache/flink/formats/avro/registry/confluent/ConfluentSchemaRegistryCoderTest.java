@@ -19,6 +19,7 @@
 package org.apache.flink.formats.avro.registry.confluent;
 
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,6 +56,49 @@ class ConfluentSchemaRegistryCoderTest {
 
         assertThat(readSchema).isEqualTo(schema);
         assertThat(byteInStream).isEmpty();
+    }
+
+    @Test
+    public void testSpecificRecordWithConfluentSchemaRegistryAndLongSchemaId() throws Exception {
+        MockSchemaRegistryClient client = new MockSchemaRegistryClient();
+
+        Schema schema =
+                SchemaBuilder.record("testRecord").fields().optionalString("testField").endRecord();
+        int schemaId = client.register("testTopic", schema);
+
+        ConfluentSchemaRegistryCoder registryCoder = new ConfluentSchemaRegistryCoder(client, true);
+        ByteArrayOutputStream byteOutStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteOutStream);
+        dataOutputStream.writeByte(0);
+        dataOutputStream.writeLong(schemaId);
+        dataOutputStream.flush();
+
+        ByteArrayInputStream byteInStream = new ByteArrayInputStream(byteOutStream.toByteArray());
+        Schema readSchema = registryCoder.readSchema(byteInStream);
+
+        assertEquals(schema, readSchema);
+        assertEquals(0, byteInStream.available());
+    }
+
+    @Test
+    public void writeSchemaWithLongSchemaId() throws RestClientException, IOException {
+        MockSchemaRegistryClient client = new MockSchemaRegistryClient();
+        Schema schema =
+                SchemaBuilder.record("testRecord").fields().optionalString("testField").endRecord();
+        int schemaId = client.register("testTopic", schema);
+        ConfluentSchemaRegistryCoder registryCoder = new ConfluentSchemaRegistryCoder(client, true);
+        ByteArrayOutputStream byteOutStream = new ByteArrayOutputStream();
+        registryCoder.writeSchema(schema, byteOutStream);
+
+        // magic byte
+        byte[] output = byteOutStream.toByteArray();
+        assertEquals(0, output[0]);
+
+        // long schemaId
+        ByteBuffer idBuffer = ByteBuffer.allocate(Long.BYTES);
+        idBuffer.put(output, 1, 8);
+        idBuffer.flip();
+        assertEquals(schemaId, idBuffer.getLong());
     }
 
     @Test

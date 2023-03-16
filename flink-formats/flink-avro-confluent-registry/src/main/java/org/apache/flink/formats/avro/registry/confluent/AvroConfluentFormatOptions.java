@@ -61,6 +61,13 @@ public class AvroConfluentFormatOptions {
                                     + "the Debezium schema which is a nullable record type including "
                                     + "fields 'before', 'after', 'op' ('debezium-avro-confluent').");
 
+    public static final ConfigOption<Boolean> LONG_SCHEMA_ID =
+            ConfigOptions.key("long-schema-id")
+                    .booleanType()
+                    .noDefaultValue()
+                    .withDescription(
+                            "Should the schema id be treated as a 'long' instead of an 'int'");
+
     // --------------------------------------------------------------------------------------------
     // Commonly used options maintained by Flink for convenience
     // --------------------------------------------------------------------------------------------
