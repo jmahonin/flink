@@ -1,0 +1,117 @@
+name: Decodable Flink CI
+on:
+  - pull_request
+  - push
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up JDK 8
+        uses: actions/setup-java@v3
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+          cache: maven
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+      - name: Fetch AWS CodeArtifact token
+        run: echo CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain decodable --domain-owner 671293015970 --query authorizationToken --output text ) >> $GITHUB_ENV
+      - name: Docker auth
+        run: |
+          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 671293015970.dkr.ecr.us-west-2.amazonaws.com
+      - name: maven-settings-xml-action
+        uses: whelk-io/maven-settings-xml-action@v20
+        with:
+          servers: >
+            [
+              {
+                "id": "decodable-mvn-releases-local",
+                "username": "aws",
+                "password": "${env.CODEARTIFACT_AUTH_TOKEN}"
+              },
+            {
+              "id": "decodable-mvn-snapshots-local",
+              "username": "aws",
+              "password": "${env.CODEARTIFACT_AUTH_TOKEN}"
+            }
+            ]
+      - name: Build
+        run: ./mvnw clean install -B -DskipTests -Drat.skip -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dscala-2.12 -Ddocs-and-source
+      - name: Flink Version
+        run: |
+          FLINK_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "FLINK_VERSION=$FLINK_VERSION" >> $GITHUB_ENV
+          if [[ $FLINK_VERSION == *"SNAPSHOT"* ]]; then
+            BASE_FLINK_VERSION=$FLINK_VERSION
+            if [[ "$FLINK_VERSION" == "1.15-SNAPSHOT" ]]; then
+              PY_FLINK_VERSION="1.15.4"
+            elif [[ "$FLINK_VERSION" == "1.16-SNAPSHOT" ]]; then
+              PY_FLINK_VERSION="1.16.3"
+            elif [[ "$FLINK_VERSION" == "1.18-SNAPSHOT" ]]; then
+              PY_FLINK_VERSION="1.18.1"
+            else
+              echo "Unsupported FLINK_VERSION=$FLINK_VERSION"
+              exit 1
+            fi
+          else
+            # drop -decoXX suffix
+            BASE_FLINK_VERSION="${FLINK_VERSION%-*}"
+            PY_FLINK_VERSION=$BASE_FLINK_VERSION
+          fi
+          echo "BASE_FLINK_VERSION=$BASE_FLINK_VERSION" >> $GITHUB_ENV
+          echo "PY_FLINK_VERSION=$PY_FLINK_VERSION" >> $GITHUB_ENV
+      - name: Decodable Flink Dist Name
+        run: |
+          git_hash=$(git rev-parse --short "$GITHUB_SHA")
+          echo "FLINK_DIST_NAME=decodable-flink-${{ env.FLINK_VERSION }}-$git_hash.tgz" >> $GITHUB_ENV
+      - name: Decodable Flink dist
+        # if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/decodable') }}
+        run: |
+          set -x
+          TARGET="ci-build"
+          if [[ "${{ github.ref_name }}" =~ ^decodable.* ]]; then
+            TARGET="dist"
+          fi
+          tar -czf ${{ github.workspace }}/${{ env.FLINK_DIST_NAME }} -C ${{ github.workspace }}/build-target/ .
+          aws s3 cp ${{ github.workspace }}/${{ env.FLINK_DIST_NAME }} s3://decodable-flink-dist/${TARGET}/${{ github.ref_name }}/
+
+          mv ${{ github.workspace }}/${{ env.FLINK_DIST_NAME }} /home/runner/work/decodable-flink/decodable-flink/tools/decodable/flink.tgz
+      # See for Docker: https://github.com/docker/build-push-action
+      - name: Build and push (Java-Flink)
+        uses: docker/build-push-action@v2
+        with:
+          file: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/Dockerfile
+          context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
+          platforms: linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.BASE_FLINK_VERSION }}-latest,671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}
+      - name: Build and push (PyFlink)
+        uses: docker/build-push-action@v2
+        with:
+          file: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/Dockerfile.pyflink
+          context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
+          platforms: linux/arm64
+          build-args: |
+            CI_DOCKER_BASE=671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.BASE_FLINK_VERSION }}-latest
+            CI_DOCKER_PY_FLINK_VERSION=${{ env.PY_FLINK_VERSION }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-py-${{ env.BASE_FLINK_VERSION }}-latest,671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-py-${{ env.FLINK_VERSION }}
+      - name: Deploy maven artifacts
+        # if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/decodable') }}
+        run: ./mvnw deploy -DskipTests -Dscala-2.12 -Ddocs-and-source -Drat.skip

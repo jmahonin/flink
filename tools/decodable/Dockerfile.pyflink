@@ -1,0 +1,12 @@
+ARG CI_DOCKER_BASE
+FROM ${CI_DOCKER_BASE}
+ARG CI_DOCKER_PY_FLINK_VERSION
+
+# install python3 and pip3
+RUN apt-get update -y && \
+  apt-get install -y python3 python3-pip python3-dev && \
+  rm -rf /var/lib/apt/lists/*
+
+
+# install PyFlink
+RUN set -x ; pip3 install apache-flink==$CI_DOCKER_PY_FLINK_VERSION
