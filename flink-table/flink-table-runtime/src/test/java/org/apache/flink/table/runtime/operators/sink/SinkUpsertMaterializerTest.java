@@ -45,7 +45,6 @@ import static org.apache.flink.table.runtime.util.StreamRecordUtils.deleteRecord
 import static org.apache.flink.table.runtime.util.StreamRecordUtils.insertRecord;
 import static org.apache.flink.table.runtime.util.StreamRecordUtils.rowOfKind;
 import static org.apache.flink.table.runtime.util.StreamRecordUtils.updateAfterRecord;
-import static org.apache.flink.table.runtime.util.StreamRecordUtils.updateAfterRecord;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Test for {@link SinkUpsertMaterializer}. */

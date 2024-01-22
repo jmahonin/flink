@@ -417,7 +417,8 @@ public abstract class CommonExecSink extends ExecNodeBase<Object>
                         ? null
                         : new EqualiserCodeGenerator(
                                         RowTypeUtils.projectRowType(
-                                                physicalRowType, inputUpsertKey))
+                                                physicalRowType, inputUpsertKey),
+                                        classLoader)
                                 .generateRecordEqualiser("SinkMaterializeUpsertKeyEqualiser");
 
         SinkUpsertMaterializer operator =

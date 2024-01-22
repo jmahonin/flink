@@ -31,6 +31,7 @@ import java.sql.ResultSet;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Test for {@link AbstractJdbcRowConverter}. */
 public class AbstractJdbcRowConverterTest {
