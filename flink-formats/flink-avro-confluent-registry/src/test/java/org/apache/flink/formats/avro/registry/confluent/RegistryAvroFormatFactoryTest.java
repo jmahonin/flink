@@ -50,6 +50,7 @@ import static org.apache.flink.table.factories.utils.FactoryMocks.createTableSou
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Tests for the {@link RegistryAvroFormatFactory}. */
 class RegistryAvroFormatFactoryTest {
@@ -246,7 +247,7 @@ class RegistryAvroFormatFactoryTest {
         Map<String, String> sinkOpts = new HashMap<>(getOptionalProperties());
         sinkOpts.put("avro-confluent.long-schema-id", "true");
         final DynamicTableSink actualSink = createTableSink(SCHEMA, sinkOpts);
-        assertThat(actualSink, instanceOf(TestDynamicTableFactory.DynamicTableSinkMock.class));
+        assertThat(actualSink).isInstanceOf(TestDynamicTableFactory.DynamicTableSinkMock.class);
         TestDynamicTableFactory.DynamicTableSinkMock sinkMock =
                 (TestDynamicTableFactory.DynamicTableSinkMock) actualSink;
 
@@ -272,7 +273,7 @@ class RegistryAvroFormatFactoryTest {
         Map<String, String> sourceOpts = new HashMap<>(getOptionalProperties());
         sourceOpts.put("avro-confluent.long-schema-id", "true");
         final DynamicTableSource actualSource = createTableSource(SCHEMA, sourceOpts);
-        assertThat(actualSource, instanceOf(TestDynamicTableFactory.DynamicTableSourceMock.class));
+        assertThat(actualSource).isInstanceOf(TestDynamicTableFactory.DynamicTableSourceMock.class);
         TestDynamicTableFactory.DynamicTableSourceMock scanSourceMock =
                 (TestDynamicTableFactory.DynamicTableSourceMock) actualSource;
 

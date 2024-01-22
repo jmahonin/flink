@@ -64,6 +64,9 @@ under the License.
 		<repository>
 			<id>decodable-mvn-releases-local</id>
 			<url>https://decodable-671293015970.d.codeartifact.us-west-2.amazonaws.com/maven/decodable-mvn-releases-local/</url>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
 		</repository>
 	</repositories>
 
