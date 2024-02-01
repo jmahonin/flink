@@ -1,14 +1,16 @@
 name: Decodable Flink CI
 on:
-  - pull_request
-  - push
+  pull_request:
+  push:
+    branches:
+      - 'decodable-*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -76,6 +78,7 @@ jobs:
           fi
           echo "BASE_FLINK_VERSION=$BASE_FLINK_VERSION" >> $GITHUB_ENV
           echo "PY_FLINK_VERSION=$PY_FLINK_VERSION" >> $GITHUB_ENV
+          echo "IMAGE_IDENTIFIER=java11-python310" >> $GITHUB_ENV
       - name: Decodable Flink Dist Name
         run: |
           git_hash=$(git rev-parse --short "$GITHUB_SHA")
@@ -100,7 +103,7 @@ jobs:
           context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
           platforms: linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.BASE_FLINK_VERSION }}-latest,671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}
+          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.BASE_FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER }}
       - name: Build and push (PyFlink)
         uses: docker/build-push-action@v2
         with:
@@ -111,7 +114,7 @@ jobs:
             CI_DOCKER_BASE=671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.BASE_FLINK_VERSION }}-latest
             CI_DOCKER_PY_FLINK_VERSION=${{ env.PY_FLINK_VERSION }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-py-${{ env.BASE_FLINK_VERSION }}-latest,671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-py-${{ env.FLINK_VERSION }}
+          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-py-${{ env.BASE_FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER }}
       - name: Deploy maven artifacts
-        # if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/decodable') }}
+        if: github.event_name != 'pull_request'
         run: ./mvnw deploy -DskipTests -Dscala-2.12 -Ddocs-and-source -Drat.skip
