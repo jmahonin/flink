@@ -60,7 +60,6 @@ jobs:
           FLINK_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "FLINK_VERSION=$FLINK_VERSION" >> $GITHUB_ENV
           if [[ $FLINK_VERSION == *"SNAPSHOT"* ]]; then
-            BASE_FLINK_VERSION=$FLINK_VERSION
             if [[ "$FLINK_VERSION" == "1.15-SNAPSHOT" ]]; then
               PY_FLINK_VERSION="1.15.4"
             elif [[ "$FLINK_VERSION" == "1.16-SNAPSHOT" ]]; then
@@ -73,10 +72,8 @@ jobs:
             fi
           else
             # drop -decoXX suffix
-            BASE_FLINK_VERSION="${FLINK_VERSION%-*}"
-            PY_FLINK_VERSION=$BASE_FLINK_VERSION
+            PY_FLINK_VERSION="${FLINK_VERSION%-*}"
           fi
-          echo "BASE_FLINK_VERSION=$BASE_FLINK_VERSION" >> $GITHUB_ENV
           echo "PY_FLINK_VERSION=$PY_FLINK_VERSION" >> $GITHUB_ENV
           echo "IMAGE_IDENTIFIER=java11-python310" >> $GITHUB_ENV
       - name: Decodable Flink Dist Name
@@ -91,7 +88,6 @@ jobs:
             TARGET="dist"
           fi
           tar -czf ${{ github.workspace }}/${{ env.FLINK_DIST_NAME }} -C ${{ github.workspace }}/build-target/ .
-          aws s3 cp ${{ github.workspace }}/${{ env.FLINK_DIST_NAME }} s3://decodable-flink-dist/${TARGET}/${{ github.ref_name }}/
 
           mv ${{ github.workspace }}/${{ env.FLINK_DIST_NAME }} /home/runner/work/decodable-flink/decodable-flink/tools/decodable/flink.tgz
       # See for Docker: https://github.com/docker/build-push-action
@@ -102,7 +98,7 @@ jobs:
           context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
           platforms: linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.BASE_FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER }}
+          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER }}
       - name: Build and push (PyFlink)
         uses: docker/build-push-action@v2
         with:
@@ -110,10 +106,10 @@ jobs:
           context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
           platforms: linux/arm64
           build-args: |
-            CI_DOCKER_BASE=671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.BASE_FLINK_VERSION }}-latest
+            CI_DOCKER_BASE=671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER }}
             CI_DOCKER_PY_FLINK_VERSION=${{ env.PY_FLINK_VERSION }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-py-${{ env.BASE_FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER }}
+          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-py-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER }}
       - name: Deploy maven artifacts
         if: github.event_name != 'pull_request'
         run: ./mvnw deploy -DskipTests -Dscala-2.12 -Ddocs-and-source -Drat.skip
