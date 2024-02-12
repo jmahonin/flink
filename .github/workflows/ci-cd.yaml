@@ -99,6 +99,7 @@ jobs:
           file: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/Dockerfile
           context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
           platforms: linux/arm64
+          push: true
           tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}
       - name: Build and push (PyFlink)
         if: ${{ github.event_name != 'pull_request' }}
@@ -110,6 +111,7 @@ jobs:
           build-args: |
             CI_DOCKER_BASE=671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}
             CI_DOCKER_PY_FLINK_VERSION=${{ env.PY_FLINK_VERSION }}
+          push: true
           tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}-python310
       - name: Deploy maven artifacts
         if: github.event_name != 'pull_request'
