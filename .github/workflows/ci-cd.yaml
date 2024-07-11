@@ -97,7 +97,7 @@ jobs:
         with:
           file: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/Dockerfile
           context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
-          platforms: linux/arm64
+          platforms: linux/arm64, linux/amd64
           push: true
           tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}
       - name: Build and push (PyFlink)
@@ -106,7 +106,7 @@ jobs:
         with:
           file: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/Dockerfile.pyflink
           context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
-          platforms: linux/arm64
+          platforms: linux/arm64, linux/amd64
           build-args: |
             CI_DOCKER_BASE=671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}
             CI_DOCKER_PY_FLINK_VERSION=${{ env.PY_FLINK_VERSION }}
