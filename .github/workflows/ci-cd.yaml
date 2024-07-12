@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4core
     steps:
       - uses: actions/checkout@v3
         with:
@@ -113,6 +113,3 @@ jobs:
             CI_DOCKER_PY_FLINK_VERSION=${{ env.PY_FLINK_VERSION }}
           push: true
           tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}-python310
-      - name: Deploy maven artifacts
-        if: github.event_name != 'pull_request'
-        run: ./mvnw deploy -DskipTests -Dscala-2.12 -Ddocs-and-source -Drat.skip
