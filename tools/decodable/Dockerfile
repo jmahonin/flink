@@ -21,7 +21,7 @@ FROM eclipse-temurin:11-jdk-jammy
 # Install dependencies
 RUN set -ex; \
   apt-get update; \
-  apt-get -y install gpg libsnappy1v5 gettext-base libjemalloc-dev; \
+  apt-get -y install gpg libsnappy1v5 gettext-base libjemalloc-dev jq; \
   rm -rf /var/lib/apt/lists/*
 
 # Grab gosu for easy step-down from root
