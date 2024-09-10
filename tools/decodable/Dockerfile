@@ -21,8 +21,12 @@ FROM eclipse-temurin:11-jdk-jammy
 # Install dependencies
 RUN set -ex; \
   apt-get update; \
-  apt-get -y install gpg libsnappy1v5 gettext-base libjemalloc-dev jq; \
+  apt-get -y install gpg libsnappy1v5 gettext-base libjemalloc-dev jq python3-pip; \
   rm -rf /var/lib/apt/lists/*
+
+# Setup AWS CLI (for heapdump uploader)
+RUN pip3 install awscli --upgrade
+ENV PATH=$PATH:/usr/local/bin/
 
 # Grab gosu for easy step-down from root
 ENV GOSU_VERSION 1.11

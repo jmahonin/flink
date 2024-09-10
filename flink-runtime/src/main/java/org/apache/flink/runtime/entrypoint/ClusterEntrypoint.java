@@ -234,6 +234,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
                                 return null;
                             });
         } catch (Throwable t) {
+            LOG.error("Fatal error in entrypoint", t);
             final Throwable strippedThrowable =
                     ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
 
