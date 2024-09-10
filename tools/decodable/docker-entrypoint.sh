@@ -23,7 +23,13 @@ COMMAND_HISTORY_SERVER="history-server"
 
 # If unspecified, the hostname of the container is taken as the JobManager address
 JOB_MANAGER_RPC_ADDRESS=${JOB_MANAGER_RPC_ADDRESS:-$(hostname -f)}
-CONF_FILE="${FLINK_HOME}/conf/flink-conf.yaml"
+CONF_FILE="/opt/flink-conf/flink-conf.yaml"
+
+# Use a writable path for the Flink lib directory.
+# We'll symlink all the libs for the classpath in here.
+export FLINK_LIB_DIR="/opt/flink-libs"
+export FLINK_PLUGINS_DIR="/opt/flink-plugins"
+export FLINK_CONF_DIR="/opt/flink-conf"
 
 drop_privs_cmd() {
     if [ $(id -u) != 0 ]; then
@@ -48,12 +54,12 @@ copy_plugins_if_required() {
     echo "Linking ${target_plugin} to plugin directory"
     plugin_name=${target_plugin%.jar}
 
-    mkdir -p "${FLINK_HOME}/plugins/${plugin_name}"
+    mkdir -p "${FLINK_PLUGINS_DIR}/${plugin_name}"
     if [ ! -e "${FLINK_HOME}/opt/${target_plugin}" ]; then
       echo "Plugin ${target_plugin} does not exist. Exiting."
       exit 1
     else
-      ln -fs "${FLINK_HOME}/opt/${target_plugin}" "${FLINK_HOME}/plugins/${plugin_name}"
+      ln -fs "${FLINK_HOME}/opt/${target_plugin}" "${FLINK_PLUGINS_DIR}/${plugin_name}"
       echo "Successfully enabled ${target_plugin}"
     fi
   done
@@ -108,11 +114,38 @@ maybe_enable_jemalloc() {
     fi
 }
 
+link_libs() {
+  mkdir -p "${FLINK_LIB_DIR}"
+  for jar in lib/*; do
+    DESTINATION_JAR_PATH="${FLINK_LIB_DIR}/$(basename "$jar")"
+    ln -sf "${FLINK_HOME}/${jar}" "$DESTINATION_JAR_PATH"
+  done
+}
+
+link_plugins() {
+  mkdir -p "${FLINK_PLUGINS_DIR}"
+  for jar in plugins/*; do
+    DESTINATION_JAR_PATH="${FLINK_PLUGINS_DIR}/$(basename "$jar")"
+    ln -sf "${FLINK_HOME}/${jar}" "$DESTINATION_JAR_PATH"
+  done
+}
+
+copy_conf() {
+  mkdir -p ${FLINK_CONF_DIR} 
+  cp "${FLINK_HOME}/conf/flink-conf.yaml" "${FLINK_CONF_DIR}"
+}
+
+copy_conf
+
 maybe_enable_jemalloc
 
 copy_plugins_if_required
 
 prepare_configuration
+
+link_libs
+
+link_plugins
 
 args=("$@")
 if [ "$1" = "help" ]; then
