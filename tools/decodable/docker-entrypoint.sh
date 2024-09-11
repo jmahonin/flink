@@ -59,6 +59,7 @@ copy_plugins_if_required() {
       echo "Plugin ${target_plugin} does not exist. Exiting."
       exit 1
     else
+      mkdir -p "${FLINK_PLUGINS_DIR}/${plugin_name}"
       ln -fs "${FLINK_HOME}/opt/${target_plugin}" "${FLINK_PLUGINS_DIR}/${plugin_name}"
       echo "Successfully enabled ${target_plugin}"
     fi
@@ -118,21 +119,26 @@ link_libs() {
   mkdir -p "${FLINK_LIB_DIR}"
   for jar in lib/*; do
     DESTINATION_JAR_PATH="${FLINK_LIB_DIR}/$(basename "$jar")"
-    ln -sf "${FLINK_HOME}/${jar}" "$DESTINATION_JAR_PATH"
+    ln -fs "${FLINK_HOME}/${jar}" "$DESTINATION_JAR_PATH"
   done
 }
 
 link_plugins() {
   mkdir -p "${FLINK_PLUGINS_DIR}"
   for jar in plugins/*; do
-    DESTINATION_JAR_PATH="${FLINK_PLUGINS_DIR}/$(basename "$jar")"
-    ln -sf "${FLINK_HOME}/${jar}" "$DESTINATION_JAR_PATH"
+    PLUGIN="$(basename "$jar")"
+    DESTINATION_JAR_PATH="${FLINK_PLUGINS_DIR}/${PLUGIN}"
+    if [ ! -e "$DESTINATION_JAR_PATH" ]; then
+      ln -fs "${FLINK_HOME}/${jar}" "$DESTINATION_JAR_PATH"
+    fi
   done
 }
 
 copy_conf() {
   mkdir -p ${FLINK_CONF_DIR} 
-  cp "${FLINK_HOME}/conf/flink-conf.yaml" "${FLINK_CONF_DIR}"
+  for file in ${FLINK_HOME}/conf/*; do
+    cp "${file}" "${FLINK_CONF_DIR}"
+  done
 }
 
 copy_conf
