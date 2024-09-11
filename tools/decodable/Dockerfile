@@ -16,6 +16,13 @@
 # limitations under the License.
 ###############################################################################
 
+# To build locally (adjust version as needed):
+#
+# docker build -f tools/decodable/Dockerfile \
+#   -t decodable/decodable-product-flink:custom-1.19.1-deco2-java11 \
+#   --build-context entrypoint=tools/decodable \
+#   build-target
+
 FROM eclipse-temurin:11-jdk-jammy
 
 # Install dependencies
@@ -23,6 +30,17 @@ RUN set -ex; \
   apt-get update; \
   apt-get -y install gpg libsnappy1v5 gettext-base libjemalloc-dev; \
   rm -rf /var/lib/apt/lists/*
+
+# Install yq for patching config.yaml; a kingdom for an OS package...
+ENV YQ_VERSION="v4.44.3"
+RUN mkdir /tmp/jq_release; \
+  wget -qO /tmp/jq_release "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums"; \
+  wget -qO /tmp/jq_release "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums_hashes_order"; \
+  wget -qO /tmp/jq_release "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/extract-checksum.sh"; \
+  wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64-$(dpkg --print-architecture)"; \
+  /tmp/jq_release/extract-checksum.sh MD5 yq_linux_$(dpkg --print-architecture).tar.gz | awk '{ print $2 " " $1}' | md5sum -c -; \
+  rm -rf /tmp/jq_release; \
+  chmod +x /usr/local/bin/yq
 
 # Grab gosu for easy step-down from root
 ENV GOSU_VERSION 1.11
@@ -43,7 +61,6 @@ RUN set -ex; \
   chmod +x /usr/local/bin/gosu; \
   gosu nobody true
 
-
 # Prepare environment
 ENV FLINK_HOME=/opt/flink
 ENV PATH=$FLINK_HOME/bin:$PATH
@@ -51,23 +68,20 @@ RUN groupadd --system --gid=9999 flink && \
     useradd --system --home-dir $FLINK_HOME --uid=9999 --gid=flink flink
 WORKDIR $FLINK_HOME
 
-COPY flink.tgz .
+COPY --chown=flink:flink . $FLINK_HOME/
+
 # Install Flink
 RUN set -ex; \
-  tar -xf flink.tgz --strip-components=1; \
-  rm flink.tgz; \
-  \
-  chown -R flink:flink .; \
   \
   # Replace default REST/RPC endpoint bind address to use the container's network interface \
-  sed -i 's/rest.address: localhost/rest.address: 0.0.0.0/g' $FLINK_HOME/conf/flink-conf.yaml; \
-  sed -i 's/rest.bind-address: localhost/rest.bind-address: 0.0.0.0/g' $FLINK_HOME/conf/flink-conf.yaml; \
-  sed -i 's/jobmanager.bind-host: localhost/jobmanager.bind-host: 0.0.0.0/g' $FLINK_HOME/conf/flink-conf.yaml; \
-  sed -i 's/taskmanager.bind-host: localhost/taskmanager.bind-host: 0.0.0.0/g' $FLINK_HOME/conf/flink-conf.yaml; \
-  sed -i '/taskmanager.host: localhost/d' $FLINK_HOME/conf/flink-conf.yaml;
+  yq -i '.rest.address = "0.0.0.0"' FLINK_HOME/conf/config.yaml; \
+  yq -i '.rest.bind-address = "0.0.0.0"' FLINK_HOME/conf/config.yaml; \
+  yq -i '.jobmanager.bind-host = "0.0.0.0"' FLINK_HOME/conf/config.yaml; \
+  yq -i '.taskmanager.bind-host = "0.0.0.0"' FLINK_HOME/conf/config.yaml; \
+  yq -i '.taskmanager.host = "0.0.0.0"' FLINK_HOME/conf/config.yaml;
 
 # Configure container
-COPY docker-entrypoint.sh /
+COPY --from=entrypoint docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
 EXPOSE 6123 8081
 CMD ["help"]

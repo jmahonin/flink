@@ -2,11 +2,22 @@ ARG CI_DOCKER_BASE
 FROM ${CI_DOCKER_BASE}
 ARG CI_DOCKER_PY_FLINK_VERSION
 
-# install python3 and pip3
+# Install Python 3.11 and pip for Python 3.11
+# The default on Ubuntu 22.04 (Jammy Jellyfish) is Python 3.10,
+# and the Jammy 3.11 package is for a preview version. Hence:
+#
+# - Getting 3.11 from deadsnakes/ppa
+# - Installing pip manually into 3.11
+# - Manually symlinking 3.11 to python3
 RUN apt-get update -y && \
-  apt-get install -y python3 python3-pip python3-dev && \
-  rm -rf /var/lib/apt/lists/*
-
+  apt-get install -y software-properties-common build-essential && \
+  add-apt-repository ppa:deadsnakes/ppa -y && \
+  apt-get remove -y --auto-remove software-properties-common && \
+  apt-get install -y python3.11 python3.11-dev && \
+  rm -rf /var/lib/apt/lists/* && \
+  ln -s /usr/bin/python3.11 /usr/bin/python3 && \
+  curl -sS https://bootstrap.pypa.io/get-pip.py | python3 && \
+  python3 -m pip install --upgrade pip
 
 # install PyFlink
 RUN set -x ; pip3 install apache-flink==$CI_DOCKER_PY_FLINK_VERSION

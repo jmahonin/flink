@@ -66,6 +66,8 @@ jobs:
               PY_FLINK_VERSION="1.16.3"
             elif [[ "$FLINK_VERSION" == "1.18-SNAPSHOT" ]]; then
               PY_FLINK_VERSION="1.18.1"
+            elif [[ "$FLINK_VERSION" == "1.19-SNAPSHOT" ]]; then
+              PY_FLINK_VERSION="1.19.1"
             else
               echo "Unsupported FLINK_VERSION=$FLINK_VERSION"
               exit 1
@@ -76,28 +78,16 @@ jobs:
           fi
           echo "PY_FLINK_VERSION=$PY_FLINK_VERSION" >> $GITHUB_ENV
           echo "IMAGE_IDENTIFIER_JAVA=java11" >> $GITHUB_ENV
-      - name: Decodable Flink Dist Name
-        run: |
-          git_hash=$(git rev-parse --short "$GITHUB_SHA")
-          echo "FLINK_DIST_NAME=decodable-flink-${{ env.FLINK_VERSION }}-$git_hash.tgz" >> $GITHUB_ENV
-      - name: Decodable Flink dist
-        # if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/decodable') }}
-        run: |
-          set -x
-          TARGET="ci-build"
-          if [[ "${{ github.ref_name }}" =~ ^decodable.* ]]; then
-            TARGET="dist"
-          fi
-          tar -czf ${{ github.workspace }}/${{ env.FLINK_DIST_NAME }} -C ${{ github.workspace }}/build-target/ .
-
-          mv ${{ github.workspace }}/${{ env.FLINK_DIST_NAME }} /home/runner/work/decodable-flink/decodable-flink/tools/decodable/flink.tgz
+          echo "IMAGE_IDENTIFIER_PYTHON=python311" >> $GITHUB_ENV
       # See for Docker: https://github.com/docker/build-push-action
       - name: Build and push (Java-Flink)
         if: ${{ github.event_name != 'pull_request' }}
         uses: docker/build-push-action@v2
         with:
           file: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/Dockerfile
-          context: /home/runner/work/decodable-flink/decodable-flink/tools/decodable/
+          context: /home/runner/work/decodable-flink/decodable-flink/build-target/
+          build-contexts: |
+            entrypoint=/home/runner/work/decodable-flink/decodable-flink/tools/decodable/
           platforms: linux/arm64, linux/amd64
           push: true
           tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}
@@ -112,4 +102,4 @@ jobs:
             CI_DOCKER_BASE=671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}
             CI_DOCKER_PY_FLINK_VERSION=${{ env.PY_FLINK_VERSION }}
           push: true
-          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}-python310
+          tags: 671293015970.dkr.ecr.us-west-2.amazonaws.com/decodable-product-flink:custom-${{ env.FLINK_VERSION }}-${{ env.IMAGE_IDENTIFIER_JAVA }}-${{ env.IMAGE_IDENTIFIER_PYTHON }}
