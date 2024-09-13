@@ -28,8 +28,29 @@ FROM eclipse-temurin:11-jdk-jammy
 # Install dependencies
 RUN set -ex; \
   apt-get update; \
-  apt-get -y install gpg libsnappy1v5 gettext-base libjemalloc-dev; \
+  apt-get -y install gpg libsnappy1v5 gettext-base libjemalloc-dev jq unzip; \
   rm -rf /var/lib/apt/lists/*
+
+# Install Python 3.11 and pip for Python 3.11
+# The default on Ubuntu 22.04 (Jammy Jellyfish) is Python 3.10,
+# and the Jammy 3.11 package is for a preview version. Hence:
+#
+# - Getting 3.11 from deadsnakes/ppa
+# - Installing pip manually into 3.11
+# - Manually symlinking 3.11 to python3
+RUN apt-get update -y && \
+  apt-get install -y software-properties-common build-essential && \
+  add-apt-repository ppa:deadsnakes/ppa -y && \
+  apt-get remove -y --auto-remove software-properties-common && \
+  apt-get install -y python3.11 python3.11-dev && \
+  rm -rf /var/lib/apt/lists/* && \
+  ln -s /usr/bin/python3.11 /usr/bin/python3 && \
+  curl -sS https://bootstrap.pypa.io/get-pip.py | python3 && \
+  python3 -m pip install --upgrade pip
+
+# Setup AWS CLI 
+RUN pip3 install awscli --upgrade
+ENV PATH=$PATH:/usr/local/bin/
 
 # Install yq for patching config.yaml; a kingdom for an OS package...
 ENV YQ_VERSION="v4.44.3"
@@ -81,7 +102,7 @@ RUN set -ex; \
   yq -i '.taskmanager.host = "0.0.0.0"' FLINK_HOME/conf/config.yaml;
 
 # Configure container
-COPY --from=entrypoint docker-entrypoint.sh /
+COPY  --from=entrypoint docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
 EXPOSE 6123 8081
 CMD ["help"]
