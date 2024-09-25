@@ -31,6 +31,8 @@ export FLINK_LIB_DIR="/opt/flink-libs"
 export FLINK_PLUGINS_DIR="/opt/flink-plugins"
 export FLINK_CONF_DIR="/opt/flink-conf"
 
+mkdir -p "/tmp/jvmheaps"
+
 drop_privs_cmd() {
     if [ $(id -u) != 0 ]; then
         # Don't need to drop privs if EUID != 0
