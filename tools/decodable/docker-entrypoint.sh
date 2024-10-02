@@ -95,7 +95,6 @@ prepare_configuration() {
     if [ -n "${FLINK_PROPERTIES}" ]; then
         echo "${FLINK_PROPERTIES}" >> "${CONF_FILE}"
     fi
-    envsubst < "${CONF_FILE}" > "${CONF_FILE}.tmp" && mv "${CONF_FILE}.tmp" "${CONF_FILE}"
 }
 
 maybe_enable_jemalloc() {
